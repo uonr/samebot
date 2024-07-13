@@ -1,0 +1,21 @@
+{
+  "name": "samebot",
+  "version": "0.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "socket.io-client": "^4.7.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
