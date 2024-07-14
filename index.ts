@@ -14,6 +14,8 @@ const configSchema = z.object({
   servers: z.array(z.object({ url: z.string(), secure: z.boolean() })),
 });
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const updatesSchema = z.object({
   "ok": z.boolean(),
   "result": z.array(z.object({
@@ -25,6 +27,16 @@ const updatesSchema = z.object({
     })),
   }))
 });
+
+async function telegramReq(method: string, params: Record<string, unknown>): Promise<unknown> {
+  const url = new URL(`https://api.telegram.org/bot${botToken}/${method}`);
+  const entries: Array<[string, string]> = Object.entries(params)
+    .filter(([key, value]) => typeof value != "function" && value != null)
+    .map(([key, value]) => [key, typeof value === "object" ? JSON.stringify(value) : String(value)]);
+  url.search = new URLSearchParams(Object.fromEntries(entries)).toString();
+  const response = await fetch(url.toString());
+  return await response.json();
+}
 
 async function connectToSocket() {
   const configUrl = `https://www.cytu.be/socketconfig/${channelName}.json`;
@@ -47,18 +59,27 @@ async function connectToSocket() {
     client.emit('channelPassword', password);
   });
   client.on("usercount", async (count: number) => {
-    const params = new URLSearchParams();
-    params.append("chat_id", chatId);
-    params.append("title", `鲨鲨播播 (${count - 1}人在线)`);
-    await fetch(`https://api.telegram.org/bot${botToken}/setChatTitle?${params.toString()}`);
+    const title = `鲨鲨播播 (${count - 1}人在线)`;
+    try {
+      await telegramReq("setChatTitle", { chat_id: chatId, title });
+      console.log("Set chat title: " + title);
+    } catch {
+      console.warn("Failed to set chat title");
+    }
   });
+}
+
+const removeTitle = async () => {
   const titleMessageIdMap: Map<number, number> = new Map();
-  const removeTitle = async () => {
-    const params = new URLSearchParams();
-    params.append("timeout", "10");
-    params.append("allowed_updates", JSON.stringify(["channel_post"]));
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates?${params.toString()}`);
-    const json = await response.json();
+  while (true) {
+    let json: unknown;
+    try {
+      json = await telegramReq("getUpdates", { timeout: 10, allowed_updates: ["channel_post"] });
+    } catch {
+      console.warn("Failed to fetch updates");
+      setTimeout(removeTitle, 1000);
+      return;
+    }
     const updates = updatesSchema.parse(json);
     for (const update of updates.result) {
       if (!update.channel_post || !update.channel_post.new_chat_title) {
@@ -73,17 +94,16 @@ async function connectToSocket() {
     if (!latestTitleMessage) {
       return;
     }
-    const deleteParams = new URLSearchParams();
-    deleteParams.append("chat_id", chatId);
-    deleteParams.append("message_ids", JSON.stringify(titleMessagesByDate.map(([_, messageId]) => messageId)));
-    await fetch(`https://api.telegram.org/bot${botToken}/deleteMessages?${deleteParams.toString()}`);
+    try {
+      await telegramReq("deleteMessages", { chat_id: chatId, message_ids: titleMessagesByDate.map(([_, messageId]) => messageId) });
+    } catch {
+      console.warn("Failed to delete messages");
+    }
     titleMessageIdMap.clear();
     titleMessageIdMap.set(latestTitleMessage[0], latestTitleMessage[1]);
-    setTimeout(removeTitle, 1000);
-  };
-  setTimeout(() => {
-    removeTitle();
-  }, 1000);
-}
+    await sleep(500);
+  }
+};
 
 connectToSocket();
+removeTitle();
