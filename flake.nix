@@ -16,6 +16,19 @@
       in
       {
         devShells.default = pkgs.mkShell { buildInputs = with pkgs; [ nodejs ]; };
+        packages.samebot = pkgs.buildNpmPackage rec {
+          name = "samebot";
+          pname = name;
+          src = pkgs.lib.sources.cleanSource ./.;
+          dontNpmBuild = true;
+          npmDepsHash = "sha256-uBmmDdVe8bUjkyRrP/6PrD89zmQt3iLypPv82cqVQVI=";
+          installPhase = ''
+            mkdir -p $out
+            cp package.json $out/
+            cp -r node_modules $out/
+            cp index.ts $out/
+          '';
+        };
       }
     );
 }
