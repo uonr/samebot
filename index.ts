@@ -42,7 +42,14 @@ async function connectToSocket() {
   const configUrl = `https://www.cytu.be/socketconfig/${channelName}.json`;
   const response = await fetch(configUrl);
   const json = await response.json();
-  const config = configSchema.parse(json);
+  let config: z.infer<typeof configSchema>;
+  try {
+    config = configSchema.parse(json);
+  } catch (e) {
+    console.error("Failed to parse config");
+    console.log(json);
+    return;
+  }
   if (config.servers.length === 0) {
     throw new Error("No servers found in config");
   }
@@ -80,7 +87,14 @@ const removeTitle = async () => {
       setTimeout(removeTitle, 1000);
       return;
     }
-    const updates = updatesSchema.parse(json);
+    let updates: z.infer<typeof updatesSchema>;
+    try {
+      updates = updatesSchema.parse(json);
+    } catch {
+      console.warn("Failed to parse updates");
+      console.log(json);
+      continue;
+    }
     for (const update of updates.result) {
       if (!update.channel_post || !update.channel_post.new_chat_title) {
         continue;
