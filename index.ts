@@ -74,6 +74,12 @@ async function connectToSocket() {
       console.warn("Failed to set chat title");
     }
   });
+  client.on("disconnect", async () => {
+    console.log("Disconnected from server");
+    await sleep(1000);
+    client.close();
+    connectToSocket();
+  });
 }
 
 const removeTitle = async () => {
