@@ -65,8 +65,8 @@ async function connectToSocket() {
   client.once('needPassword', () => {
     client.emit('channelPassword', password);
   });
-  client.on("usercount", async (count: number) => {
-    const title = `鲨鲨播播 (${count - 1}人在线)`;
+  client.on("setPlaylistMeta", async ({ count }: { count: number }) => {
+    const title = count > 0 ? `鲨鲨播播 (列表 ${count})` : "鲨鲨播播";
     try {
       await telegramReq("setChatTitle", { chat_id: chatId, title });
       console.log("Set chat title: " + title);
